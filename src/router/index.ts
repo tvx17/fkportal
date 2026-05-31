@@ -7,14 +7,12 @@ import {
 } from 'vue-router';
 import routes from './routes';
 
-/*
- * If not building with SSR mode, you can
- * directly export the Router instantiation;
- *
- * The function below can be async too; either use
- * async/await or return a Promise which resolves
- * with the Router instance.
- */
+// Dummy-Funktion für die Prüfung (hier den echten Check einbauen, z. B. via Pinia-Store oder LocalStorage)
+function isAuthenticated(): boolean {
+  return !!localStorage.getItem('user_token');
+}
+
+let Router: any;
 
 export default defineRouter(function (/* { store, ssrContext } */) {
   const createHistory = process.env.SERVER
@@ -23,7 +21,7 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       ? createWebHistory
       : createWebHashHistory;
 
-  const Router = createRouter({
+  Router = createRouter({
     scrollBehavior: () => ({ left: 0, top: 0 }),
     routes,
 
@@ -33,5 +31,24 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   });
 
+  // --- beforeEach-Guard hier einfügen ---
+  Router.beforeEach((to, from, next) => {
+    // Prüft, ob die Route oder eine übergeordnete Route Authentifizierung erfordert
+    const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
+
+    if (requiresAuth && !isAuthenticated()) {
+      // Weiterleitung zur Login-Seite (Name muss mit dem Namen in routes.ts übereinstimmen)
+      next({ name: 'Login' });
+    } else if (to.name === 'Login' && isAuthenticated()) {
+      // Wenn bereits eingeloggt, Weiterleitung zur Startseite verhindern und umleiten
+      next({ name: 'Home' });
+    } else {
+      // Navigation erlauben
+      next();
+    }
+  });
+
   return Router;
 });
+
+export { Router };

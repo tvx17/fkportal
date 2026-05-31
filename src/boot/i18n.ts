@@ -1,33 +1,40 @@
-import { defineBoot } from '#q-app/wrappers';
+import { boot } from 'quasar/wrappers';
 import { createI18n } from 'vue-i18n';
 
-import messages from 'src/i18n';
+// Sprache ermitteln: gespeicherte Präferenz, Browser-Sprache, Fallback
+function detectLocale(): string {
+  const saved = localStorage.getItem('locale');
+  if (saved) return saved;
 
-export type MessageLanguages = keyof typeof messages;
-// Type-define 'en-US' as the master schema for the resource
-export type MessageSchema = (typeof messages)['en-US'];
-
-// See https://vue-i18n.intlify.dev/guide/advanced/typescript.html#global-resource-schema-type-definition
-/* eslint-disable @typescript-eslint/no-empty-object-type */
-declare module 'vue-i18n' {
-  // define the locale messages schema
-  export interface DefineLocaleMessage extends MessageSchema {}
-
-  // define the datetime format schema
-  export interface DefineDateTimeFormat {}
-
-  // define the number format schema
-  export interface DefineNumberFormat {}
+  const browser = navigator.language.split('-')[0];
+  const supported = ['de', 'en', 'fr']; // deine unterstützten Sprachen
+  return supported.includes(browser) ? browser : 'de';
 }
-/* eslint-enable @typescript-eslint/no-empty-object-type */
 
-export default defineBoot(({ app }) => {
-  const i18n = createI18n<{ message: MessageSchema }, MessageLanguages>({
-    locale: 'en-US',
-    legacy: false,
-    messages,
-  });
+const locale = detectLocale();
 
-  // Set i18n instance on app
+// Nur die aktive Sprache laden
+const messages = await import(`src/i18n/base/${locale}.json`);
+
+export const i18n = createI18n({
+  locale,
+  fallbackLocale: 'de',
+  legacy: false,
+  messages: {
+    [locale]: messages.default,
+  },
+});
+
+export async function setLocale(lang: string) {
+  if (!i18n.global.availableLocales.includes(lang)) {
+    const messages = await import(`src/i18n/base/${lang}.json`);
+    i18n.global.setLocaleMessage(lang, messages.default);
+  }
+
+  i18n.global.locale.value = lang;
+  localStorage.setItem('locale', lang);
+}
+
+export default boot(({ app }) => {
   app.use(i18n);
 });
