@@ -2,7 +2,6 @@ import _user from './user';
 import _logger from 'src/core/logger';
 import _settings from 'src/core/settings';
 import { Router } from 'src/router';
-import { useRoute } from 'vue-router';
 
 function activateDebugMode() {
   _logger.setNotify(true);
@@ -14,17 +13,18 @@ function startUp() {
   }
 
   _logger.info('Starting application...');
-  const route = useRoute();
+
+  // Über die Router-Instanz auf die aktuelle Route zugreifen
+  const currentRoute = Router.currentRoute.value;
 
   if (!_user.checkToken()) {
     _logger.warning('User is not authenticated. Redirecting to login page...');
-    if (route.name !== 'pageLogin') {
+    if (currentRoute && currentRoute.name !== 'pageLogin') {
       Router.push({ name: 'pageLogin' });
     }
   } else {
     _logger.info('User is authenticated.');
-    // Nur pushen, wenn der User NICHT schon auf der Index-Seite ist
-    if (route.name !== 'pageIndex') {
+    if (currentRoute && currentRoute.name !== 'pageIndex') {
       Router.push({ name: 'pageIndex' });
     }
   }

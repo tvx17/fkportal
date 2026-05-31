@@ -1,0 +1,917 @@
+﻿--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\boot\axios.ts ---
+import { defineBoot } from '#q-app/wrappers';
+import axios, { type AxiosInstance } from 'axios';
+
+declare module 'vue' {
+  interface ComponentCustomProperties {
+    $axios: AxiosInstance;
+    $api: AxiosInstance;
+  }
+}
+
+// Be careful when using SSR for cross-request state pollution
+// due to creating a Singleton instance here;
+// If any client changes this (global) instance, it might be a
+// good idea to move this instance creation inside of the
+// "export default () => {}" function below (which runs individually
+// for each client)
+const api = axios.create({ baseURL: 'http://localhost:8080' });
+
+export default defineBoot(({ app }) => {
+  // for use inside Vue files (Options API) through this.$axios and this.$api
+
+  app.config.globalProperties.$axios = axios;
+  // ^ ^ ^ this will allow you to use this.$axios (for Vue Options API form)
+  //       so you won't necessarily have to import axios in each vue file
+
+  app.config.globalProperties.$api = api;
+  // ^ ^ ^ this will allow you to use this.$api (for Vue Options API form)
+  //       so you can easily perform requests against your app's API
+});
+
+export { api };
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\boot\i18n.ts ---
+import { boot } from 'quasar/wrappers';
+import { createI18n } from 'vue-i18n';
+
+// Sprache ermitteln: gespeicherte PrÃ¤ferenz, Browser-Sprache, Fallback
+function detectLocale(): string {
+  const saved = localStorage.getItem('locale');
+  if (saved) return saved;
+
+  const browser = navigator.language.split('-')[0];
+  const supported = ['de', 'en', 'fr']; // deine unterstÃ¼tzten Sprachen
+  return supported.includes(browser) ? browser : 'de';
+}
+
+const locale = detectLocale();
+
+// Nur die aktive Sprache laden
+const messages = await import(`src/i18n/base/${locale}.json`);
+
+export const i18n = createI18n({
+  locale,
+  fallbackLocale: 'de',
+  legacy: false,
+  messages: {
+    [locale]: messages.default,
+  },
+});
+
+export async function setLocale(lang: string) {
+  if (!i18n.global.availableLocales.includes(lang)) {
+    const messages = await import(`src/i18n/base/${lang}.json`);
+    i18n.global.setLocaleMessage(lang, messages.default);
+  }
+
+  i18n.global.locale.value = lang;
+  localStorage.setItem('locale', lang);
+}
+
+export default boot(({ app }) => {
+  app.use(i18n);
+});
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\components\EssentialLink.vue ---
+<template>
+  <q-item clickable tag="a" target="_blank" :href="link">
+    <q-item-section v-if="icon" avatar>
+      <q-icon :name="icon" />
+    </q-item-section>
+
+    <q-item-section>
+      <q-item-label>{{ title }}</q-item-label>
+      <q-item-label caption>{{ caption }}</q-item-label>
+    </q-item-section>
+  </q-item>
+</template>
+
+<script setup lang="ts">
+export interface EssentialLinkProps {
+  title: string;
+  caption?: string;
+  link?: string;
+  icon?: string;
+}
+
+withDefaults(defineProps<EssentialLinkProps>(), {
+  caption: '',
+  link: '#',
+  icon: '',
+});
+</script>
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\components\ExampleComponent.vue ---
+<template>
+  <div>
+    <p>{{ title }}</p>
+    <ul>
+      <li v-for="todo in todos" :key="todo.id" @click="increment">
+        {{ todo.id }} - {{ todo.content }}
+      </li>
+    </ul>
+    <p>Count: {{ todoCount }} / {{ meta.totalCount }}</p>
+    <p>Active: {{ active ? 'yes' : 'no' }}</p>
+    <p>Clicks on todos: {{ clickCount }}</p>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+import type { Todo, Meta } from './models';
+
+interface Props {
+  title: string;
+  todos?: Todo[];
+  meta: Meta;
+  active: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  todos: () => [],
+});
+
+const clickCount = ref(0);
+function increment() {
+  clickCount.value += 1;
+  return clickCount.value;
+}
+
+const todoCount = computed(() => props.todos.length);
+</script>
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\components\models.ts ---
+export interface Todo {
+  id: number;
+  content: string;
+}
+
+export interface Meta {
+  totalCount: number;
+}
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\composables\useComponentI18n.ts ---
+import { onMounted, onUnmounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { i18n } from 'src/boot/i18n';
+
+export function useComponentI18n(
+  componentKey: string,
+  type: 'components' | 'pages' | 'layouts' = 'pages',
+) {
+  const { locale } = useI18n();
+
+  async function loadMessages(lang: string) {
+    try {
+      console.log(`Lade Ãœbersetzungen fÃ¼r "${type}/${componentKey}" in "${lang}"...`);
+      const messages = await import(`src/i18n/${type}/${componentKey}/${lang}.json`);
+
+      const current = i18n.global.getLocaleMessage(lang);
+      i18n.global.setLocaleMessage(lang, {
+        ...current,
+        [componentKey]: messages.default,
+      });
+    } catch (e) {
+      console.warn(`Keine Ãœbersetzungen fÃ¼r "${type}/${componentKey}/${lang}" gefunden.`);
+    }
+  }
+
+  function removeMessages(lang: string) {
+    const current = { ...i18n.global.getLocaleMessage(lang) };
+    delete current[componentKey];
+    i18n.global.setLocaleMessage(lang, current);
+  }
+
+  onMounted(async () => {
+    await loadMessages(locale.value);
+  });
+
+  onUnmounted(() => {
+    removeMessages(locale.value);
+  });
+
+  watch(locale, async (newLang, oldLang) => {
+    removeMessages(oldLang);
+    await loadMessages(newLang);
+  });
+
+  return { loadMessages, removeMessages };
+}
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\core\app.ts ---
+import _user from './user';
+import _logger from 'src/core/logger';
+import _settings from 'src/core/settings';
+import { Router } from 'src/router';
+import { useRoute } from 'vue-router';
+
+function activateDebugMode() {
+  _logger.setNotify(true);
+}
+
+function startUp() {
+  if (_settings.runMode === 'development') {
+    activateDebugMode();
+  }
+
+  _logger.info('Starting application...');
+  const route = useRoute();
+
+  if (!_user.checkToken()) {
+    _logger.warning('User is not authenticated. Redirecting to login page...');
+    if (route.name !== 'pageLogin') {
+      Router.push({ name: 'pageLogin' });
+    }
+  } else {
+    _logger.info('User is authenticated.');
+    // Nur pushen, wenn der User NICHT schon auf der Index-Seite ist
+    if (route.name !== 'pageIndex') {
+      Router.push({ name: 'pageIndex' });
+    }
+  }
+}
+
+export default {
+  startUp,
+  activateDebugMode,
+};
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\core\dialogs.ts ---
+function info() {}
+
+function warning() {}
+
+function error() {}
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\core\logger.ts ---
+import _notify from 'src/core/notifies';
+
+let _level = 'info';
+let _notifyActive = false;
+
+function info(message: string, data?: any) {
+  if (_level === 'warning' || _level === 'error' || _level === 'info') {
+    console.log(`INFO: ${message}`, data || '');
+    if (_notifyActive) {
+      _notify.info(message);
+    }
+  }
+}
+function warning(message: string, data?: any) {
+  if (_level === 'warning' || _level === 'error') {
+    console.warn(`WARNING: ${message}`, data || '');
+    if (_notifyActive) {
+      _notify.warning(message);
+    }
+  }
+}
+function error(message: string, data?: any) {
+  if (_level === 'error') {
+    console.error(`ERROR: ${message}`, data || '');
+    if (_notifyActive) {
+      _notify.error(message);
+    }
+  }
+}
+
+function setLevel(level: 'info' | 'warning' | 'error' | 'off') {
+  _level = level;
+}
+
+function setNotify(notify: boolean) {
+  _notifyActive = notify;
+}
+
+export default {
+  info,
+  warning,
+  error,
+  setLevel,
+  setNotify,
+};
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\core\notifies.ts ---
+import { Notify } from 'quasar';
+
+function message(message: string) {
+  Notify.create({
+    message,
+    color: 'info',
+  });
+}
+
+function info(message: string) {
+  Notify.create({
+    message,
+    color: 'info',
+  });
+}
+
+function warning(message: string) {
+  Notify.create({
+    message,
+    color: 'warning',
+  });
+}
+
+function error(message: string) {
+  Notify.create({
+    message,
+    color: 'negative',
+  });
+}
+
+export default {
+  info,
+  warning,
+  error,
+  message,
+};
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\core\settings.ts ---
+const version = '1.0.0';
+const runMode = 'development';
+
+export default {
+  version,
+  runMode,
+};
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\core\user.ts ---
+import _logger from 'src/core/logger';
+import { api } from 'src/boot/axios';
+import { Router } from 'src/router';
+import { useUserStore } from 'src/stores/userStore'; // Pfad ggf. anpassen
+
+const userStore = useUserStore();
+
+function login(email: string, password: string) {
+  _logger.info('Attempting login with email: ' + email);
+  api
+    .post('/api/v1/user/login', { email, password })
+    .then((response) => {
+      _logger.info('Login successful');
+      setToken(response.data.access_token, 'accessToken');
+      setToken(response.data.refresh_token, 'refreshToken');
+      userStore.setRole(response.data.role);
+      Router.push({ name: 'pageIndex' });
+    })
+    .catch((error) => {
+      _logger.error('Login failed: ' + error);
+    });
+}
+
+function refreshToken() {
+  _logger.info('Attempting to refresh token...');
+  api
+    .post('/api/v1/user/refresh', {}, { withCredentials: true })
+    .then((response) => {
+      _logger.info('Token refresh successful');
+      setToken(response.data.access_token, 'accessToken');
+      setToken(response.data.refresh_token, 'refreshToken');
+      userStore.setRole(response.data.role);
+    })
+    .catch((error) => {
+      _logger.error('Token refresh failed: ' + error);
+      removeToken();
+      userStore.clearRole();
+      Router.push({ name: 'login' });
+    });
+}
+
+function checkToken() {
+  _logger.info('Checking token...');
+  const token = getToken();
+  if (!token) {
+    console.warn('No token found. User is not authenticated.');
+    return false;
+  } else {
+    _logger.info('Token found. User is authenticated.');
+    return true;
+  }
+}
+
+function setLastAction() {
+  userStore.setLastAction(new Date().toISOString());
+}
+
+function getToken() {
+  _logger.info('Retrieving token...');
+
+  if (!localStorage.getItem('_wlh:access_token') || !localStorage.getItem('_wlh:refresh_token')) {
+    _logger.warning('No access or refresh token found in localStorage.');
+    return false;
+  } else {
+    _logger.info('Token retrieved successfully.');
+    if (userStore.getLastAction === '' || userStore.getLastAction === null) {
+      refreshToken();
+      userStore.setLastAction(new Date().toISOString());
+    }
+    if (userStore.role === '' || userStore.role === null) {
+      getUserRole();
+    }
+
+    return true;
+  }
+}
+
+function removeToken() {
+  _logger.info('Removing token...');
+  localStorage.removeItem('_wlh:access_token');
+  localStorage.removeItem('_wlh:refresh_token');
+}
+function setToken(token: string, whichToken: 'accessToken' | 'refreshToken' = 'accessToken') {
+  _logger.info('Setting token...');
+  const _tokenKey = whichToken === 'accessToken' ? '_wlh:access_token' : '_wlh:refresh_token';
+
+  localStorage.setItem(_tokenKey, token);
+}
+
+function getUserRole() {
+  _logger.info('Retrieving user role...');
+  api
+    .get('/api/v1/user/role', { withCredentials: true })
+    .then((response) => {
+      userStore.setRole(response.data.role);
+    })
+    .catch((error) => {
+      _logger.error('Error retrieving user role: ' + error);
+    });
+
+  return userStore.role;
+}
+
+export default {
+  checkToken,
+  getToken,
+  removeToken,
+  setToken,
+  login,
+  refreshToken,
+  setLastAction,
+};
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\i18n\base\de.json ---
+{
+  "basic": "Grundlegend"
+}
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\i18n\base\en.json ---
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\i18n\en-US\index.ts ---
+// This is just an example,
+// so you can safely delete all default props below
+
+export default {
+  failed: 'Action failed',
+  success: 'Action was successful',
+};
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\i18n\pages\home\de.json ---
+{
+  "title": "Willkommen",
+  "description": "Das ist die Startseite."
+}
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\i18n\pages\home\en.json ---
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\i18n\pages\settings\de.json ---
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\i18n\pages\settings\en.json ---
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\i18n\index.ts ---
+import enUS from './en-US';
+
+export default {
+  'en-US': enUS,
+};
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\layouts\LoginLayout.vue ---
+<template>
+  <q-layout view="lHh Lpr lFf">
+    <q-header elevated>
+      <q-toolbar>
+        <q-toolbar-title> Info </q-toolbar-title>
+
+        <div>NT: Not logged in</div>
+      </q-toolbar>
+    </q-header>
+
+    <q-page-container>
+      <router-view />
+    </q-page-container>
+  </q-layout>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import EssentialLink, { type EssentialLinkProps } from 'components/EssentialLink.vue';
+
+const linksList: EssentialLinkProps[] = [
+  {
+    title: 'Docs',
+    caption: 'quasar.dev',
+    icon: 'school',
+    link: 'https://quasar.dev',
+  },
+  {
+    title: 'Github',
+    caption: 'github.com/quasarframework',
+    icon: 'code',
+    link: 'https://github.com/quasarframework',
+  },
+  {
+    title: 'Discord Chat Channel',
+    caption: 'chat.quasar.dev',
+    icon: 'chat',
+    link: 'https://chat.quasar.dev',
+  },
+  {
+    title: 'Forum',
+    caption: 'forum.quasar.dev',
+    icon: 'record_voice_over',
+    link: 'https://forum.quasar.dev',
+  },
+  {
+    title: 'Twitter',
+    caption: '@quasarframework',
+    icon: 'rss_feed',
+    link: 'https://twitter.quasar.dev',
+  },
+  {
+    title: 'Facebook',
+    caption: '@QuasarFramework',
+    icon: 'public',
+    link: 'https://facebook.quasar.dev',
+  },
+  {
+    title: 'Quasar Awesome',
+    caption: 'Community Quasar projects',
+    icon: 'favorite',
+    link: 'https://awesome.quasar.dev',
+  },
+];
+
+const leftDrawerOpen = ref(false);
+
+function toggleLeftDrawer() {
+  leftDrawerOpen.value = !leftDrawerOpen.value;
+}
+</script>
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\layouts\MainLayout.vue ---
+<template>
+  <q-layout view="lHh Lpr lFf">
+    <q-header elevated>
+      <q-toolbar>
+        <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
+
+        <q-toolbar-title> NT: Info-System </q-toolbar-title>
+
+        <div>Quasar v{{ $q.version }}</div>
+      </q-toolbar>
+    </q-header>
+
+    <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
+      <q-list>
+        <q-item-label header> NT:Apps </q-item-label>
+      </q-list>
+    </q-drawer>
+
+    <q-page-container>
+      <router-view />
+    </q-page-container>
+  </q-layout>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+const leftDrawerOpen = ref(false);
+
+function toggleLeftDrawer() {
+  leftDrawerOpen.value = !leftDrawerOpen.value;
+}
+</script>
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\pages\ErrorNotFound.vue ---
+<template>
+  <div class="fullscreen bg-blue text-white text-center q-pa-md flex flex-center">
+    <div>
+      <div style="font-size: 30vh">404</div>
+
+      <div class="text-h2" style="opacity: 0.4">Oops. Nothing here...</div>
+
+      <q-btn
+        class="q-mt-xl"
+        color="white"
+        text-color="blue"
+        unelevated
+        to="/"
+        label="Go Home"
+        no-caps
+      />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+//
+</script>
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\pages\IndexPage copy.vue ---
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+import { useComponentI18n } from 'src/composables/useComponentI18n';
+
+useComponentI18n('home'); // lÃ¤dt src/i18n/pages/home/de.json
+
+const { t } = useI18n();
+</script>
+
+<template>
+  <div>
+    <h1>{{ t('home.title') }}</h1>
+    <p>{{ t('home.description') }}</p>
+  </div>
+</template>
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\pages\IndexPage.vue ---
+<template>
+  <q-page class="row items-center justify-evenly">
+    <div>{{ t('basic') }}</div>
+    <div>{{ t('home.title') }}</div>
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+import { useComponentI18n } from 'src/composables/useComponentI18n';
+
+useComponentI18n('home', 'pages');
+
+const { t } = useI18n();
+</script>
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\pages\LoginPage.vue ---
+<template>
+  <q-page class="row items-center justify-evenly">
+    <q-card class="col-12 col-md-6 col-lg-4">
+      <q-card-section>
+        <div class="text-h6">NT: Login</div>
+      </q-card-section>
+
+      <q-card-section>
+        <q-input v-model="email" label="NT: Email" />
+        <q-input v-model="password" label="NT: Password" />
+      </q-card-section>
+
+      <q-card-actions align="right">
+        <q-btn color="primary" @click="login" unelevated>NT: Login</q-btn>
+      </q-card-actions>
+    </q-card>
+  </q-page>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import _user from 'src/core/user';
+
+const email = ref('');
+const password = ref('');
+
+function login() {
+  _user.login(email.value, password.value);
+}
+</script>
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\router\index.ts ---
+import { defineRouter } from '#q-app/wrappers';
+import {
+  createMemoryHistory,
+  createRouter,
+  createWebHashHistory,
+  createWebHistory,
+} from 'vue-router';
+import routes from './routes';
+
+// Dummy-Funktion fÃ¼r die PrÃ¼fung (hier den echten Check einbauen, z. B. via Pinia-Store oder LocalStorage)
+function isAuthenticated(): boolean {
+  return !!localStorage.getItem('user_token');
+}
+
+let Router: any;
+
+export default defineRouter(function (/* { store, ssrContext } */) {
+  const createHistory = process.env.SERVER
+    ? createMemoryHistory
+    : process.env.VUE_ROUTER_MODE === 'history'
+      ? createWebHistory
+      : createWebHashHistory;
+
+  Router = createRouter({
+    scrollBehavior: () => ({ left: 0, top: 0 }),
+    routes,
+
+    // Leave this as is and make changes in quasar.conf.js instead!
+    // quasar.conf.js -> build -> vueRouterMode
+    // quasar.conf.js -> build -> publicPath
+    history: createHistory(process.env.VUE_ROUTER_BASE),
+  });
+
+  // --- beforeEach-Guard hier einfÃ¼gen ---
+  Router.beforeEach((to, from, next) => {
+    // PrÃ¼ft, ob die Route oder eine Ã¼bergeordnete Route Authentifizierung erfordert
+    const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
+
+    if (requiresAuth && !isAuthenticated()) {
+      // Weiterleitung zur Login-Seite (Name muss mit dem Namen in routes.ts Ã¼bereinstimmen)
+      next({ name: 'Login' });
+    } else if (to.name === 'Login' && isAuthenticated()) {
+      // Wenn bereits eingeloggt, Weiterleitung zur Startseite verhindern und umleiten
+      next({ name: 'Home' });
+    } else {
+      // Navigation erlauben
+      next();
+    }
+  });
+
+  return Router;
+});
+
+export { Router };
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\router\routes.ts ---
+import type { RouteRecordRaw } from 'vue-router';
+
+const routes: RouteRecordRaw[] = [
+  {
+    path: '/',
+    name: 'layoutMain',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [{ path: '', name: 'pageIndex', component: () => import('pages/IndexPage.vue') }],
+  },
+  {
+    path: '/login',
+    name: 'layoutLogin',
+    component: () => import('layouts/LoginLayout.vue'),
+    children: [{ path: '', name: 'pageLogin', component: () => import('pages/LoginPage.vue') }],
+  },
+
+  // Always leave this as last one,
+  // but you can also remove it
+  {
+    path: '/:catchAll(.*)*',
+    component: () => import('pages/ErrorNotFound.vue'),
+  },
+];
+
+export default routes;
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\stores\example-store.ts ---
+import { defineStore, acceptHMRUpdate } from 'pinia';
+
+export const useCounterStore = defineStore('counter', {
+  state: () => ({
+    counter: 0,
+  }),
+
+  getters: {
+    doubleCount: (state) => state.counter * 2,
+  },
+
+  actions: {
+    increment() {
+      this.counter++;
+    },
+  },
+});
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useCounterStore, import.meta.hot));
+}
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\stores\index.ts ---
+import { defineStore } from '#q-app/wrappers';
+import { createPinia } from 'pinia';
+
+/*
+ * When adding new properties to stores, you should also
+ * extend the `PiniaCustomProperties` interface.
+ * @see https://pinia.vuejs.org/core-concepts/plugins.html#typing-new-store-properties
+ */
+declare module 'pinia' {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  export interface PiniaCustomProperties {
+    // add your custom properties here, if any
+  }
+}
+
+/*
+ * If not building with SSR mode, you can
+ * directly export the Store instantiation;
+ *
+ * The function below can be async too; either use
+ * async/await or return a Promise which resolves
+ * with the Store instance.
+ */
+
+export default defineStore((/* { ssrContext } */) => {
+  const pinia = createPinia();
+
+  // You can add Pinia plugins here
+  // pinia.use(SomePiniaPlugin)
+
+  return pinia;
+});
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\stores\userStore.ts ---
+import { defineStore, acceptHMRUpdate } from 'pinia';
+
+export const useUserStore = defineStore('user', {
+  state: () => ({
+    role: '',
+    lastAction: '',
+  }),
+
+  getters: {
+    isAdmin: (state) => state.role === 'admin',
+    getLastAction: (state) => state.lastAction,
+  },
+
+  actions: {
+    setLastAction(newAction: string) {
+      this.lastAction = newAction;
+    },
+    clearLastAction() {
+      this.lastAction = '';
+    },
+    setRole(newRole: string) {
+      this.role = newRole;
+    },
+    clearRole() {
+      this.role = '';
+    },
+  },
+});
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useUserStore, import.meta.hot));
+}
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\App.vue ---
+<template>
+  <router-view />
+</template>
+
+<script setup lang="ts">
+import { onMounted } from 'vue';
+import _App from 'src/core/app';
+
+onMounted(() => {
+  _App.startUp();
+});
+</script>
+
+
+--- DATEI: C:\Entwicklung\Projekte\infoPortal\fkportal\src\env.d.ts ---
+declare namespace NodeJS {
+  interface ProcessEnv {
+    NODE_ENV: string;
+    VUE_ROUTER_MODE: 'hash' | 'history' | 'abstract' | undefined;
+    VUE_ROUTER_BASE: string | undefined;
+  }
+}
+
+

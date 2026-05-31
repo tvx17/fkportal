@@ -1,11 +1,10 @@
 import _logger from 'src/core/logger';
 import { api } from 'src/boot/axios';
 import { Router } from 'src/router';
-import { useUserStore } from 'src/stores/userStore'; // Pfad ggf. anpassen
-
-const userStore = useUserStore();
+import { useUserStore } from 'src/stores/userStore';
 
 function login(email: string, password: string) {
+  const userStore = useUserStore();
   _logger.info('Attempting login with email: ' + email);
   api
     .post('/api/v1/user/login', { email, password })
@@ -22,6 +21,7 @@ function login(email: string, password: string) {
 }
 
 function refreshToken() {
+  const userStore = useUserStore();
   _logger.info('Attempting to refresh token...');
   api
     .post('/api/v1/user/refresh', {}, { withCredentials: true })
@@ -52,10 +52,12 @@ function checkToken() {
 }
 
 function setLastAction() {
+  const userStore = useUserStore();
   userStore.setLastAction(new Date().toISOString());
 }
 
 function getToken() {
+  const userStore = useUserStore();
   _logger.info('Retrieving token...');
 
   if (!localStorage.getItem('_wlh:access_token') || !localStorage.getItem('_wlh:refresh_token')) {
@@ -80,6 +82,7 @@ function removeToken() {
   localStorage.removeItem('_wlh:access_token');
   localStorage.removeItem('_wlh:refresh_token');
 }
+
 function setToken(token: string, whichToken: 'accessToken' | 'refreshToken' = 'accessToken') {
   _logger.info('Setting token...');
   const _tokenKey = whichToken === 'accessToken' ? '_wlh:access_token' : '_wlh:refresh_token';
@@ -88,6 +91,7 @@ function setToken(token: string, whichToken: 'accessToken' | 'refreshToken' = 'a
 }
 
 function getUserRole() {
+  const userStore = useUserStore();
   _logger.info('Retrieving user role...');
   api
     .get('/api/v1/user/role', { withCredentials: true })
