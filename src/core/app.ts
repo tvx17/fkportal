@@ -7,24 +7,26 @@ function activateDebugMode() {
   _logger.setNotify(true);
 }
 
-function startUp() {
+async function startUp() {
   if (_settings.runMode === 'development') {
     activateDebugMode();
   }
 
   _logger.info('Starting application...');
 
-  // Über die Router-Instanz auf die aktuelle Route zugreifen
+  // Warte die Validierung, den eventuellen Refresh und das Laden der Rolle ab
+  const isSessionValid = await _user.initializeSession();
+
   const currentRoute = Router.currentRoute.value;
 
-  if (!_user.checkToken()) {
+  if (!isSessionValid) {
     _logger.warning('User is not authenticated. Redirecting to login page...');
     if (currentRoute && currentRoute.name !== 'pageLogin') {
       Router.push({ name: 'pageLogin' });
     }
   } else {
     _logger.info('User is authenticated.');
-    if (currentRoute && currentRoute.name !== 'pageIndex') {
+    if (currentRoute && currentRoute.name === 'pageLogin') {
       Router.push({ name: 'pageIndex' });
     }
   }

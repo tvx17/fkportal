@@ -1,3 +1,4 @@
+// src/router/routes.ts
 import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
@@ -5,7 +6,12 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     name: 'layoutMain',
     component: () => import('layouts/MainLayout.vue'),
-    children: [{ path: '', name: 'pageIndex', component: () => import('pages/IndexPage.vue') }],
+    meta: { requiresAuth: true }, // <-- Schützt alle Kind-Routen (Index, User, Admin)
+    children: [
+      { path: '', name: 'pageIndex', component: () => import('pages/IndexPage.vue') },
+      { path: '/user', name: 'pageUser', component: () => import('pages/UserPage.vue') },
+      { path: '/admin', name: 'pageAdmin', component: () => import('pages/AdminPage.vue') },
+    ],
   },
   {
     path: '/login',
@@ -13,9 +19,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import('layouts/LoginLayout.vue'),
     children: [{ path: '', name: 'pageLogin', component: () => import('pages/LoginPage.vue') }],
   },
-
-  // Always leave this as last one,
-  // but you can also remove it
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),

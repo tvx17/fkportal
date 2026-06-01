@@ -8,7 +8,7 @@ import {
 import routes from './routes';
 
 function isAuthenticated(): boolean {
-  return !!localStorage.getItem('user_token');
+  return !!localStorage.getItem('_wlh:access_token');
 }
 
 let Router: any;
@@ -28,13 +28,12 @@ export default defineRouter(function (/* { store, ssrContext } */) {
 
   Router.beforeEach((to, from, next) => {
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
+    const authenticated = isAuthenticated();
 
-    if (requiresAuth && !isAuthenticated()) {
-      // Namen angepasst an routes.ts (pageLogin statt Login)
+    if (requiresAuth && !authenticated) {
       next({ name: 'pageLogin' });
-    } else if (to.name === 'pageLogin' && isAuthenticated()) {
-      // Namen angepasst an routes.ts (pageIndex statt Home)
-      next({ name: 'pageIndex' });
+    } else if (to.name === 'pageLogin' && authenticated) {
+      next({ name: 'pageIndex' }); // Falls man eingeloggt ist, direkt zur Startseite
     } else {
       next();
     }
