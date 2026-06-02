@@ -20,8 +20,7 @@ async function login(email: string, password: string) {
     const response = await api.post('/user/login', { email, password });
     _logger.info('Login successful');
 
-    setToken(response.data.access_token, 'accessToken');
-    setToken(response.data.refresh_token, 'refreshToken');
+    setToken(response.data.access_token);
     setApiHeader(response.data.access_token);
 
     userStore.setRole(response.data.role);
@@ -50,8 +49,7 @@ async function refreshToken(): Promise<boolean> {
     });
 
     _logger.info('Token refresh successful');
-    setToken(response.data.access_token, 'accessToken');
-    setToken(response.data.refresh_token, 'refreshToken'); // Rotation!
+    setToken(response.data.access_token);
     setApiHeader(response.data.access_token);
 
     userStore.setRole(response.data.role || userStore.role);
@@ -72,8 +70,16 @@ async function getUserRole(): Promise<string> {
   const userStore = useUserStore();
   _logger.info('Retrieving user role...');
 
+  const currentToken = localStorage.getItem('_wlh:access_token');
+
   try {
-    const response = await api.get('/user/getRole');
+    // Übergib den Header hier explizit für DIESEN Request,
+    // um globale Race-Conditions zu umgehen
+    const response = await api.get('/user/getRole', {
+      headers: {
+        Authorization: `Bearer ${currentToken}`,
+      },
+    });
 
     if (response.data && response.data.role) {
       userStore.setRole(response.data.role);
@@ -85,10 +91,7 @@ async function getUserRole(): Promise<string> {
 }
 
 function checkToken(): boolean {
-  // Wird beim Booten genutzt. Gibt an, ob überhaupt Tokens da sind.
-  const hasAccess = !!localStorage.getItem('_wlh:access_token');
-  const hasRefresh = !!localStorage.getItem('_wlh:refresh_token');
-  return hasAccess && hasRefresh;
+  return !!localStorage.getItem('_wlh:access_token');
 }
 
 async function initializeSession(): Promise<boolean> {
@@ -96,19 +99,14 @@ async function initializeSession(): Promise<boolean> {
   _logger.info('Initializing session and validating tokens...');
 
   const accessToken = localStorage.getItem('_wlh:access_token');
-  const hasRefresh = !!localStorage.getItem('_wlh:refresh_token');
 
-  if (!accessToken || !hasRefresh) {
-    _logger.warning('Missing tokens in localStorage.');
+  if (!accessToken) {
+    _logger.warning('Missing access token in localStorage.');
     return false;
   }
 
-  // Setze den Header für anstehende Requests
   setApiHeader(accessToken);
 
-  // Geändert: Wenn im Pinia-Store das Ablaufdatum/Aktion fehlt, wir aber Tokens haben,
-  // setzen wir die LastAction einfach auf "jetzt", statt sofort ein Refresh zu erzwingen,
-  // es sei denn, das Access-Token wäre nachweislich abgelaufen.
   if (!userStore.getLastAction) {
     userStore.setLastAction(new Date().toISOString());
   }
@@ -127,13 +125,11 @@ function getToken() {
 function removeToken() {
   _logger.info('Removing token...');
   localStorage.removeItem('_wlh:access_token');
-  localStorage.removeItem('_wlh:refresh_token');
 }
 
-function setToken(token: string, whichToken: 'accessToken' | 'refreshToken' = 'accessToken') {
+function setToken(token: string) {
   _logger.info('Setting token...');
-  const _tokenKey = whichToken === 'accessToken' ? '_wlh:access_token' : '_wlh:refresh_token';
-  localStorage.setItem(_tokenKey, token);
+  localStorage.setItem('_wlh:access_token', token);
 }
 
 export default {

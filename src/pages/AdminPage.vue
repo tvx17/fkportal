@@ -50,7 +50,7 @@ const expansionItems = {
     onShow: async () => {
       expansionItems.users.open = true;
       await api
-        .get('/users/get')
+        .get('/user/get')
         .then((response) => {
           console.log('API Response:', response.data);
         })
