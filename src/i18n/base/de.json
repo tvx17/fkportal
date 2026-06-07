@@ -1,3 +1,7 @@
 {
-  "basic": "Grundlegend"
+  "basic": "Grundlegend",
+  "appName": "FK-Portal",
+  "save": "Speichern",
+  "cancel": "Abbrechen",
+  "delete": "Löschen"
 }

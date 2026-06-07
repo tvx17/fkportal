@@ -4,4 +4,11 @@
   </q-page>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+import { useComponentI18n } from 'src/composables/useComponentI18n';
+
+useComponentI18n('user');
+
+const { t } = useI18n();
+</script>

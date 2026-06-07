@@ -4,7 +4,7 @@
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
 
-        <q-toolbar-title> NT: Info-System </q-toolbar-title>
+        <q-toolbar-title>NT: AppName</q-toolbar-title>
 
         <q-btn flat dense round icon="account_circle" aria-label="User" to="/user" />
       </q-toolbar>
@@ -19,7 +19,7 @@
           </q-item-section>
           <q-item-section> NT: Admin </q-item-section>
         </q-item>
-        <q-item clickable v-ripple>
+        <q-item clickable v-ripple to="/documents">
           <q-item-section avatar>
             <q-icon name="info" />
           </q-item-section>

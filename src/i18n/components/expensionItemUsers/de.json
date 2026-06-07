@@ -1,0 +1,11 @@
+{
+  "title": "Benutzer",
+  "editUser": "Benutzer bearbeiten",
+  "addUser": "Benutzer hinzufügen",
+  "deleteUser": "Benutzer löschen",
+  "name": "Name",
+  "email": "E-Mail",
+  "password": "Passwort",
+  "role": "Rolle",
+  "active": "Aktiv"
+}
