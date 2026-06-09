@@ -1,1 +1,32 @@
-// app global css in SCSS form
+$primary: #e07a5f; // Warmes Terrakotta
+$secondary: #81b29a; // Sanftes Salbeigrün
+$accent: #f2cc8f; // Sonniges Gelb
+
+$dark: #3d405b; // Ein dunkles Blau-Grau statt hartem Schwarz
+$positive: #2a9d8f; // Angepasstes Grün
+$negative: #e63946; // Angepasstes Rot
+$info: #457b9d;
+$warning: #e9c46a;
+
+.q-btn {
+  border-radius: 12px;
+  text-transform: none !important;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.q-card {
+  border-radius: 16px;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.05),
+    0 4px 6px -2px rgba(0, 0, 0, 0.025) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.q-field--outlined .q-field__control {
+  border-radius: 10px;
+}
+
+.q-dialog__inner > div {
+  border-radius: 16px !important;
+}

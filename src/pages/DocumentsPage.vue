@@ -68,7 +68,6 @@ const m = {
       .post('/documents/add', { documents: selectedDocuments })
       .then((response) => {
         console.log('Documents added successfully:', response.data);
-        r.documents.value = [];
       })
       .catch((error) => {
         console.error('Error adding documents:', error);
