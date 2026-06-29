@@ -7,6 +7,14 @@ import prettierSkipFormatting from '@vue/eslint-config-prettier/skip-formatting'
 
 export default defineConfigWithVueTs(
   {
+    ignores: [
+      '**/_*/**',
+      '**/_*',
+      'src-pwa/custom-service-worker.ts',
+      'src-pwa/register-service-worker.ts',
+    ],
+  },
+  {
     /**
      * Ignore the following files.
      * Please note that pluginQuasar.configs.recommended() already ignores

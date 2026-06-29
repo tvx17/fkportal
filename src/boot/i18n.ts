@@ -1,19 +1,18 @@
 import { boot } from 'quasar/wrappers';
 import { createI18n } from 'vue-i18n';
 
-// Sprache ermitteln: gespeicherte Präferenz, Browser-Sprache, Fallback
 function detectLocale(): string {
   const saved = localStorage.getItem('locale');
   if (saved) return saved;
 
-  const browser = navigator.language.split('-')[0];
-  const supported = ['de', 'en', 'fr']; // deine unterstützten Sprachen
-  return supported.includes(browser) ? browser : 'de';
+  const browser = navigator.language?.split('-')[0];
+  const supported = ['de', 'en', 'fr'];
+
+  return browser && supported.includes(browser) ? browser : 'de';
 }
 
 const locale = detectLocale();
 
-// Nur die aktive Sprache laden
 const messages = await import(`src/i18n/base/${locale}.json`);
 
 export const i18n = createI18n({

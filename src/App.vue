@@ -4,9 +4,11 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import _App from 'src/core/app';
+import Core from 'src/core';
 
 onMounted(() => {
-  _App.startUp();
+  Core.App.startUp().catch((e) => {
+    Core.App.Logger.error(e);
+  });
 });
 </script>

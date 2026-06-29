@@ -60,7 +60,7 @@ export default defineConfig((ctx) => {
       // polyfillModulePreload: true,
       // distDir
 
-      // extendViteConf (viteConf) {},
+      //extendViteConf(viteConf) {},
       // viteVuePluginOptions: {},
 
       vitePlugins: [
@@ -88,6 +88,9 @@ export default defineConfig((ctx) => {
             eslint: {
               lintCommand: 'eslint -c ./eslint.config.js "./src*/**/*.{ts,js,mjs,cjs,vue}"',
               useFlatConfig: true,
+            },
+            overlay: {
+              initialIsOpen: false,
             },
           },
           { server: false },
@@ -163,6 +166,12 @@ export default defineConfig((ctx) => {
     // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
     pwa: {
       workboxMode: 'GenerateSW', // 'GenerateSW' or 'InjectManifest'
+      injectPwaMeta: ctx.dev ? false : true,
+      workboxOptions: {
+        // Falls du 'generateSW' nutzt, kannst du hier Fehler-Overlays von Workbox blockieren:
+        skipWaiting: true,
+        clientsClaim: true,
+      },
       // swFilename: 'sw.js',
       // manifestFilename: 'manifest.json',
       // extendManifestJson (json) {},

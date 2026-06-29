@@ -5,13 +5,14 @@ import {
   createWebHashHistory,
   createWebHistory,
 } from 'vue-router';
+import type { RouteLocationNormalized, Router } from 'vue-router';
 import routes from './routes';
 
 function isAuthenticated(): boolean {
   return !!localStorage.getItem('_wlh:access_token');
 }
 
-let Router: any;
+let localRouter: Router;
 
 export default defineRouter(function (/* { store, ssrContext } */) {
   const createHistory = process.env.SERVER
@@ -20,26 +21,26 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       ? createWebHistory
       : createWebHashHistory;
 
-  Router = createRouter({
+  localRouter = createRouter({
     scrollBehavior: () => ({ left: 0, top: 0 }),
     routes,
     history: createHistory(process.env.VUE_ROUTER_BASE),
   });
 
-  Router.beforeEach((to, from, next) => {
+  localRouter.beforeEach((to: RouteLocationNormalized) => {
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
     const authenticated = isAuthenticated();
 
     if (requiresAuth && !authenticated) {
-      next({ name: 'pageLogin' });
-    } else if (to.name === 'pageLogin' && authenticated) {
-      next({ name: 'pageIndex' }); // Falls man eingeloggt ist, direkt zur Startseite
-    } else {
-      next();
+      return { name: 'pageLogin' };
+    }
+
+    if (to.name === 'pageLogin' && authenticated) {
+      return { name: 'pageIndex' };
     }
   });
 
-  return Router;
+  return localRouter;
 });
 
-export { Router };
+export { localRouter as Router };
